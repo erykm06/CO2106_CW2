@@ -6,8 +6,8 @@ from bs4 import BeautifulSoup
 # Part 1: Web scraping using BeautifulSoup
 def collect_page_data(url, csv_filename='BBCrecipe.csv'):
     """
-    Scrapes a BBC Food recipe page and returns a pandas DataFrame
-    with key recipe information. Also saves the data to a CSV file.
+    Scrapes a BBC Food recipe page and returns a dataframe with key info
+    The info also gets saved to an external CSV file. 
     """
     try:
         response = requests.get(url)
@@ -22,7 +22,7 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
     # Extract structured recipe data from the JSON-LD script tag
     script_tag = soup.find('script', type='application/ld+json')
     if not script_tag:
-        print("No JSON-LD data found on this page.")
+        print("No data found on this page.")
         return pd.DataFrame()
 
     try:
@@ -35,7 +35,7 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
     if '@graph' in raw:
         recipe_items = [item for item in raw['@graph'] if item.get('@type') == 'Recipe']
         if not recipe_items:
-            print("No Recipe found in JSON-LD @graph.")
+            print("No Recipe found.")
             return pd.DataFrame()
         data = recipe_items[0]
     else:
