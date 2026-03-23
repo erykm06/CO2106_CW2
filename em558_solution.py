@@ -132,3 +132,25 @@ categorical = combined_df.select_dtypes(include='str').columns.tolist()
 
 print("Numerical features:", numerical)
 print("Categorical features:", categorical)
+
+'''
+Identifying where there may be missing entries or null values, in this case all the numerical features,
+in this case all the numerical features have no missing entries so no cleaning will be done, however,
+with the categorical features, Author and Publisher are missing values (below 21100), so the values will be ultimately dropped
+from Author given that it won't remove too much of the data, and missing values in Publisher will be replaced with 'Unknown',
+given that it would remove too much of the data if dropped albeit it's less of an important feature for the recommender engine.
+''' 
+
+
+#Dropping missing values in Author Column
+combined_df.dropna(subset=['Author'], inplace=True)
+
+
+combined_df['Publisher'] = combined_df['Publisher'].fillna('Unknown')
+
+
+print(combined_df.isnull().sum())
+print(combined_df.shape)
+
+print(combined_df.describe())
+print(combined_df.describe(include='str'))
