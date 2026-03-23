@@ -3,7 +3,7 @@ import pandas as pd
 import json
 from bs4 import BeautifulSoup
 
-# Part 1: Web scraping using BeautifulSoup
+#Part 1: Web scraping using BeautifulSoup
 def collect_page_data(url, csv_filename='BBCrecipe.csv'):
     """
     Scrapes a BBC Food recipe page and returns a dataframe with key info
@@ -116,4 +116,19 @@ print(df2)
 df3 = collect_page_data(url3, 'BBCrecipe3.csv')
 print(df3)
 
-# Part 2 (Guided): Building Up a recommender engine
+#Part 2 (Guided): Building Up a recommender engine
+
+#Reading the csv files using pandas which also converts them to dataframes.
+books_df = pd.read_csv('books_new.csv')
+ratings_df = pd.read_csv('ratings.csv')
+
+#Merging the two dataframes on the shared column 'bookId'.
+combined_df = pd.merge(ratings_df, books_df, on='bookId')
+
+#Identifying the numerical and categorical feature columns from both dataframes.
+
+numerical = combined_df.select_dtypes(include='number').columns.tolist()
+categorical = combined_df.select_dtypes(include='str').columns.tolist()
+
+print("Numerical features:", numerical)
+print("Categorical features:", categorical)
