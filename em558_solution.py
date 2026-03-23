@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import json
 from bs4 import BeautifulSoup
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 #Part 1: Web scraping using BeautifulSoup
 def collect_page_data(url, csv_filename='BBCrecipe.csv'):
@@ -120,7 +122,7 @@ print(df3)
 
 #Part 2 (Guided): Building Up a recommender engine
 
-#Task 1
+#Part 2, Task 1
 
 #Reading the csv files using pandas which also converts them to dataframes.
 books_df = pd.read_csv('books_new.csv')
@@ -164,12 +166,16 @@ print(combined_df.describe())
 print(combined_df.describe(include='str'))
 
 
-#Task 2
+#Part 2, Task 2
 
 #Calculating the mean rating for each book given its title and printing the top 10 highest rated books
 average_ratings = combined_df.groupby('Title')['rating'].mean().sort_values(ascending=False)
 print(average_ratings.head(10))
 
+'''
+Using Bootstrapping method to compute a 95% confidence interval for the average (mean),
+by creating 1000 samples of size 100 with replacement. 
+'''
 bootstrap = []
 for i in range(1000):
     sample = combined_df['rating'].sample(n=100, replace=True)
@@ -179,3 +185,29 @@ for i in range(1000):
 lower = np.percentile(bootstrap, 2.5)
 upper = np.percentile(bootstrap, 97.5)
 print(f"95% Confidence Interval: [{lower:.4f}, {upper:.4f}]")
+
+
+#Part 2, Task 3
+
+#Adding an average rating column and rating count column into existing DF.
+average_ratings = average_ratings.to_frame(name='average_rating')
+average_ratings['rating_count'] = combined_df.groupby('Title')['rating'].count()
+print(average_ratings.head(10))
+
+'''
+
+'''
+
+#Part 2, Task 4 a.
+
+#Implementing the user liking or disliking a book based on the thershold being 3.6, 1 represents like and -1 dislike.
+combined_df['rating'] = np.where(combined_df['rating'] >= 3.6, 1, -1)
+
+features = ['Title', 'Author', 'Genre', 'SubGenre', 'Publisher']
+combined_df['combined_features'] = combined_df[features].agg(' '.join, axis=1)
+
+cv = CountVectorizer()
+count_matrix = cv.fit_transform(combined_df['combined_features'])
+cosine_sim = cosine_similarity(count_matrix)
+
+print(cosine_sim)
