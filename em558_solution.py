@@ -1,5 +1,7 @@
+#Importing the necessary libraries for all the tasks below
 import requests
 import pandas as pd
+import numpy as np
 import json
 from bs4 import BeautifulSoup
 
@@ -118,6 +120,8 @@ print(df3)
 
 #Part 2 (Guided): Building Up a recommender engine
 
+#Task 1
+
 #Reading the csv files using pandas which also converts them to dataframes.
 books_df = pd.read_csv('books_new.csv')
 ratings_df = pd.read_csv('ratings.csv')
@@ -152,5 +156,26 @@ combined_df['Publisher'] = combined_df['Publisher'].fillna('Unknown')
 print(combined_df.isnull().sum())
 print(combined_df.shape)
 
+'''
+After running describe before cleaning and after cleaning the data the values remain almost the same, 
+even though 2400 entries were dropped so, so far the data still seems reliable to use for the reccomender engine.
+'''
 print(combined_df.describe())
 print(combined_df.describe(include='str'))
+
+
+#Task 2
+
+#Calculating the mean rating for each book given its title and printing the top 10 highest rated books
+average_ratings = combined_df.groupby('Title')['rating'].mean().sort_values(ascending=False)
+print(average_ratings.head(10))
+
+bootstrap = []
+for i in range(1000):
+    sample = combined_df['rating'].sample(n=100, replace=True)
+    bootstrap.append(sample.mean())
+
+
+lower = np.percentile(bootstrap, 2.5)
+upper = np.percentile(bootstrap, 97.5)
+print(f"95% Confidence Interval: [{lower:.4f}, {upper:.4f}]")
