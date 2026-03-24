@@ -6,6 +6,8 @@ import json
 from bs4 import BeautifulSoup
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from numpy import linalg as LA
+from sklearn.neighbors import NearestNeighbors
 
 #Part 1: Web scraping using BeautifulSoup
 def collect_page_data(url, csv_filename='BBCrecipe.csv'):
@@ -192,7 +194,7 @@ print(f"95% Confidence Interval: [{lower:.4f}, {upper:.4f}]")
 #Adding an average rating column and rating count column into existing DF.
 average_ratings = average_ratings.to_frame(name='average_rating')
 average_ratings['rating_count'] = combined_df.groupby('Title')['rating'].count()
-print(average_ratings.head(10))
+print(average_ratings.head(10),"\n")
 
 '''
 All books in this dataset have 100 ratings each so there's no relationship between the average rating
@@ -206,6 +208,10 @@ a book with a higher average rating doesn't show that the rating count is smalle
 #Implementing the user liking or disliking a book based on the thershold being 3.6, 1 represents like and -1 dislike.
 combined_df['rating'] = np.where(combined_df['rating'] >= 3.6, 1, -1)
 
+'''
+Creating a new DF which drops duplicate entries of each novel title, otherwise after making the recommender,
+the most similar novels to a given novel will be the novel itself.
+'''
 books_df = combined_df.drop_duplicates(subset='Title').reset_index(drop=True)
 
 #Identifying the features of the DF in separate variable so that each column of a book can be combined into a single string. 
@@ -227,3 +233,69 @@ top_10 = similarity_scores.sort_values(ascending=False).iloc[1:11]
 print("Top 10 recommendations for 'Orientalism':\n")
 for index, score in top_10.items():
     print(f"{books_df.loc[index, 'Title']} - Similarity Score: {score:.4f}")
+print("\n")
+'''
+Above, 
+'''
+
+#Part 3 (Open-ended): Building up and to evaluate a recommender engine
+
+#Identifying categorical features, title not included as it doesn't provide similarity to other books, a title doesn't describe the novel.
+categorical_features = ['Author', 'Genre', 'SubGenre', 'Publisher']
+
+dummies = pd.get_dummies(books_df[categorical_features])
+
+'''
+Normalising height feature to be between 0 and 1 to match the rest of the features already converted into binary form, 
+before it was 160mm to 283mm, if it were to stay that way height would have a lot more influence on the similarity score
+than the other features making this unfair. It's also unlikely you'd be reccomended a book given its height.
+'''
+height_norm = (books_df['Height'] - books_df['Height'].min()) / (books_df['Height'].max() - books_df['Height'].min())
+
+feature_matrix = pd.concat([dummies, height_norm], axis=1).astype(float).values
+
+
+#Task 1 vector space method for similarity 
+def vec_space_method(book_title, books_df, feature_matrix):
+    
+    book_index = books_df[books_df['Title'] == book_title].index[0]
+    book_vector = feature_matrix[book_index, :]    
+
+    scores = feature_matrix @ book_vector
+
+    norms = LA.norm(feature_matrix, axis=1) * LA.norm(book_vector)
+    similarities = scores / norms
+
+    similarities_series = pd.Series(similarities, index=books_df.index)
+    top_10 = similarities_series.sort_values(ascending=False).iloc[1:11]
+
+    print(f"Top 10 recommendations for '{book_title}':\n")
+    for index, score in top_10.items():
+        print(f"{books_df.loc[index, 'Title']} - Similarity: {score:.4f}")
+
+    return top_10
+
+vec_space_method('Orientalism', books_df, feature_matrix)
+
+'''
+
+'''
+
+#Task 2 K nearest neighbour (KNN) method for similarity
+
+def knn_similarity(book_title, books_df, feature_matrix):
+    knn = NearestNeighbors(n_neighbors=11, metric='cosine')
+    knn.fit(feature_matrix)
+
+    book_index = books_df[books_df['Title'] == book_title].index[0]
+    distances, indices = knn.kneighbors([feature_matrix[book_index]])
+
+    print(f"Top 10 recommendations for '{book_title}':\n")
+    for i in range(1, 11):
+        title = books_df.loc[books_df.index[indices[0][i]], 'Title']
+        similarity = 1 - distances[0][i]  # convert distance to similarity
+        print(f"{title} - Similarity: {similarity:.4f}")
+
+    return indices[0][1:11]
+
+knn_similarity('Orientalism', books_df, feature_matrix)
