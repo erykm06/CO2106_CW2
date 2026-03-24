@@ -195,7 +195,10 @@ average_ratings['rating_count'] = combined_df.groupby('Title')['rating'].count()
 print(average_ratings.head(10))
 
 '''
-
+All books in this dataset have 100 ratings each so there's no relationship between the average rating
+and the number of ratings, for example you don't see a trend where, 
+a book with a higher average rating doesn't show that the rating count is smaller,
+ therefore the average is more extreme. 
 '''
 
 #Part 2, Task 4 a.
@@ -203,11 +206,24 @@ print(average_ratings.head(10))
 #Implementing the user liking or disliking a book based on the thershold being 3.6, 1 represents like and -1 dislike.
 combined_df['rating'] = np.where(combined_df['rating'] >= 3.6, 1, -1)
 
-features = ['Title', 'Author', 'Genre', 'SubGenre', 'Publisher']
-combined_df['combined_features'] = combined_df[features].agg(' '.join, axis=1)
+books_df = combined_df.drop_duplicates(subset='Title').reset_index(drop=True)
 
+#Identifying the features of the DF in separate variable so that each column of a book can be combined into a single string. 
+features = ['Title', 'Author', 'Genre', 'SubGenre', 'Publisher']
+books_df['combined_features'] = books_df[features].agg(' '.join, axis=1)
+
+#Importing CountVectorizer method from SkLearn which will convert the combined features column into a matrix
+#cosine_sim uses the cosine_similarity method to compute the matrix.
 cv = CountVectorizer()
-count_matrix = cv.fit_transform(combined_df['combined_features'])
+count_matrix = cv.fit_transform(books_df['combined_features'])
 cosine_sim = cosine_similarity(count_matrix)
 
-print(cosine_sim)
+#Getting the location (index) of where the book called Orientalism is in the titleframe
+book_pos = books_df[books_df['Title'] == 'Orientalism'].index[0]
+
+similarity_scores = pd.Series(cosine_sim[book_pos], index=books_df.index)
+top_10 = similarity_scores.sort_values(ascending=False).iloc[1:11]
+
+print("Top 10 recommendations for 'Orientalism':\n")
+for index, score in top_10.items():
+    print(f"{books_df.loc[index, 'Title']} - Similarity Score: {score:.4f}")
