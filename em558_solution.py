@@ -16,6 +16,7 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
     Scrapes a BBC Food recipe page and returns a dataframe with key info
     The info also gets saved to an external CSV file. 
     """
+    #Exception handling for an invalid url
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -26,7 +27,7 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
     response.encoding = 'utf-8'
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Extract structured recipe data from the JSON-LD script tag
+    #Extract structured recipe data from the JSON-LD script tag
     script_tag = soup.find('script', type='application/ld+json')
     if not script_tag:
         print("No data found on this page.")
@@ -39,7 +40,7 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
         print(f"Error parsing JSON data: {e}")
         return pd.DataFrame()
 
-    # Some pages nest the recipe inside an @graph array
+    #Some pages nest the recipe inside an @graph array
     if '@graph' in raw:
         recipe_items = [item for item in raw['@graph'] if item.get('@type') == 'Recipe']
         if not recipe_items:
@@ -49,10 +50,10 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
     else:
         data = raw
 
-    # Extract title
+    #Extract title
     title = data.get('name') or None
 
-    # Extract image URL (can be a list, dict, or string)
+    #Extract image URL 
     img = data.get('image')
     if isinstance(img, list):
         image = img[0].get('url') if img else None
@@ -61,7 +62,7 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
     else:
         image = img or None
 
-    # Extract prep and cook times from the HTML dt/dd pairs
+    #Extract prep and cook times
     prep_time = None
     cook_time = None
     for dt in soup.find_all('dt'):
@@ -74,18 +75,18 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
                 cook_time = dd.text.strip()
     total_time = f"Prep: {prep_time}, Cook: {cook_time}" if prep_time or cook_time else None
 
-    # Extract category, cuisine, and ingredients
+    #Extract category, cuisine, and ingredients
     category = data.get('recipeCategory') or None
     cuisine = data.get('recipeCuisine') or None
     ingredient_list = data.get('recipeIngredient', [])
     ingredients = ', '.join(ingredient_list) if ingredient_list else None
 
-    # Extract rating information
+    #Extract rating information
     agg_rating = data.get('aggregateRating', {})
     rating_val = agg_rating.get('ratingValue') or None
     rating_count = agg_rating.get('ratingCount') or None
 
-    # Extract dietary information and derive vegan/vegetarian flags
+    #Extract dietary information
     diets = data.get('suitableForDiet', [])
     if isinstance(diets, str):
         diets = [diets]
@@ -93,7 +94,7 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
     vegan = any('Vegan' in d for d in diets) if diets else None
     vegetarian = any('Vegetarian' in d for d in diets) if diets else None
 
-    # Build DataFrame and save to CSV
+    #Build DataFrame and save to CSV
     columns = {
         'title': title,
         'total_time': total_time,
@@ -109,6 +110,7 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
         'url': url
     }
     df = pd.DataFrame([columns])
+    #Encoding so that % is displayed in csv file, and na_rep used to show missing values as NaN instead of blank cells
     df.to_csv(csv_filename, index=False, encoding='utf-8-sig', na_rep='NaN')
     return df
 
@@ -204,9 +206,9 @@ plt.xlabel('Rating Count')
 plt.ylabel('Average Rating')
 plt.show()
 
-
-#All books in this dataset have 100 ratings each so there's no relationship between the average rating
-#and the number of ratings, for example you don't see a trend where, 
+#The graph plot above shows that there is no relationship between the average rating 
+#and the number of ratings, as the books all have 100 ratings each.
+#For example you don't see a trend where, 
 #a book with a higher average rating doesn't show that the rating count is smaller,
 #therefore the average is more extreme. 
 
@@ -445,20 +447,20 @@ def predict_like(user_id, book_title, books_df, combined_df, feature_matrix):
         print(f"Prediction: User {user_id} would DISLIKE '{book_title}' (score: {weighted_score[book_index]:.4f})")
         return -1
 
-#sample_users = combined_df['user_id'].drop_duplicates().sample(n=10)
+sample_users = combined_df['user_id'].drop_duplicates().sample(n=10)
 
-#correct = 0
-#total = 0
+correct = 0
+total = 0
 
-#for user_id in sample_users:
-    #user_books = combined_df[combined_df['user_id'] == user_id]
-    #for index, row in user_books.iterrows():
-        #prediction = predict_like(user_id, row['Title'], books_df, combined_df, feature_matrix)
-        #if prediction == row['rating']:
-            #correct += 1
-        #total += 1
+for user_id in sample_users:
+    user_books = combined_df[combined_df['user_id'] == user_id]
+    for index, row in user_books.iterrows():
+        prediction = predict_like(user_id, row['Title'], books_df, combined_df, feature_matrix)
+        if prediction == row['rating']:
+            correct += 1
+        total += 1
 
-#print(f"\nOverall Accuracy: {correct}/{total} ({correct/total:.4f})")
+print(f"\nOverall Accuracy: {correct}/{total} ({correct/total:.4f})")
 
 #Code above used to test accuracy of the predictor.
 #After running the test on 10 random users multiple times,
