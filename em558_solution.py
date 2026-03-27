@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from numpy import linalg as LA
@@ -31,6 +32,7 @@ def collect_page_data(url, csv_filename='BBCrecipe.csv'):
         print("No data found on this page.")
         return pd.DataFrame()
 
+    #Exception handling if JSON doesn't return in a valid format
     try:
         raw = json.loads(script_tag.string)
     except json.JSONDecodeError as e:
@@ -195,6 +197,12 @@ print(f"95% Confidence Interval: [{lower:.4f}, {upper:.4f}]")
 average_ratings = average_ratings.to_frame(name='average_rating')
 average_ratings['rating_count'] = combined_df.groupby('Title')['rating'].count()
 print(average_ratings.head(10),"\n")
+
+average_ratings.plot.scatter(x='rating_count', y='average_rating')
+plt.title('Average Rating vs Rating Count')
+plt.xlabel('Rating Count')
+plt.ylabel('Average Rating')
+plt.show()
 
 
 #All books in this dataset have 100 ratings each so there's no relationship between the average rating
@@ -423,7 +431,7 @@ def predict_like(user_id, book_title, books_df, combined_df, feature_matrix):
 #Normalising user profile vector so that a user who has rated a lot more books,
 #doesn't have an unfair advantage
     normalisation = LA.norm(user_profile)
-    relative_importance = user_profile
+    relative_importance = user_profile / normalisation
 
     weighted_score = feature_matrix @ relative_importance
 
@@ -436,8 +444,6 @@ def predict_like(user_id, book_title, books_df, combined_df, feature_matrix):
     else:
         print(f"Prediction: User {user_id} would DISLIKE '{book_title}' (score: {weighted_score[book_index]:.4f})")
         return -1
-    
-predict_like(35, 'Orientalism', books_df, combined_df, feature_matrix)
 
 #sample_users = combined_df['user_id'].drop_duplicates().sample(n=10)
 
