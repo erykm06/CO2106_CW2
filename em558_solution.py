@@ -360,7 +360,9 @@ print(f"Coverage of the recommender system: {coverage:.4f}")
 #I computed the coverage only once given my previous comment of both vector space method and KNN
 #essentially giving the same output.
 
-#Coverage is 16.67% meaning only 35 out of 210 books were recommended.
+#Coverage is 0.1667 meaning only 35 out of 210 books were recommended.
+#This is expected given that each test user has only been given 10 book recommendations.
+#Best case scenario: 4 users * 10 unique books per user = 40/210. 
 
 
 #Evaluating via. personalisation
@@ -392,3 +394,70 @@ upper_triangular = similarity_matrix[np.triu_indices(4, k=1)]
 A = upper_triangular.mean()
 personalisation = 1 - A
 print(f"Personalisation of the recommender system: {personalisation:.4f}")
+
+#Personalisation score is 0.85 meaning that 
+#each test user is getting mostly different books recommended to them
+#with a small overlap of 0.1667, this makes sense as the genres of the
+#4 test users vary, so you'd expect them to have different recommendations
+
+
+#Task 4, predictor that predicts whether a user will like a book or not.
+
+#Implementation will be similar to Part 3 Task 1,
+#using the vector space method to predict whether a user
+#will like a book instead of finding similar books to a given book.
+
+def predict_like(user_id, book_title, books_df, combined_df, feature_matrix):
+
+    #Getting a user rating as a preference vector, 1 for like and -1 for dislike.
+    user_ratings = combined_df[combined_df['user_id'] == user_id]
+
+    preference_vector = np.zeros(len(books_df))
+    for index, row in user_ratings.iterrows():
+        book_index = books_df[books_df['Title'] == row['Title']].index
+        if len(book_index) > 0:
+            preference_vector[book_index[0]] = row['rating']
+        
+    
+    user_profile = preference_vector @ feature_matrix
+#Normalising user profile vector so that a user who has rated a lot more books,
+#doesn't have an unfair advantage
+    normalisation = LA.norm(user_profile)
+    relative_importance = user_profile
+
+    weighted_score = feature_matrix @ relative_importance
+
+    book_index = books_df[books_df['Title'] == book_title].index[0]
+
+
+    if weighted_score[book_index] > 0:
+        print(f"Prediction: User {user_id} would LIKE '{book_title}' (score: {weighted_score[book_index]:.4f})")
+        return 1
+    else:
+        print(f"Prediction: User {user_id} would DISLIKE '{book_title}' (score: {weighted_score[book_index]:.4f})")
+        return -1
+    
+predict_like(35, 'Orientalism', books_df, combined_df, feature_matrix)
+
+#sample_users = combined_df['user_id'].drop_duplicates().sample(n=10)
+
+#correct = 0
+#total = 0
+
+#for user_id in sample_users:
+    #user_books = combined_df[combined_df['user_id'] == user_id]
+    #for index, row in user_books.iterrows():
+        #prediction = predict_like(user_id, row['Title'], books_df, combined_df, feature_matrix)
+        #if prediction == row['rating']:
+            #correct += 1
+        #total += 1
+
+#print(f"\nOverall Accuracy: {correct}/{total} ({correct/total:.4f})")
+
+#Code above used to test accuracy of the predictor.
+#After running the test on 10 random users multiple times,
+#the accuracy seems to be around 60-90%.
+
+
+
+
