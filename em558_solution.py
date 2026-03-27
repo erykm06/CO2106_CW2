@@ -320,23 +320,75 @@ test_set = {
 
 total_books = len(books_df)
 
-vec_reccomendations = {}
-knn_reccomendations = {}
+space_vector_recommendations = {}
+knn_recommendations = {}
 
 for user, book in test_set.items():
 
+    #Spacing out results for each given user as it was too cluttered before
+    print(f"\n{'-'*40}")
     print(f"{user} likes '{book}'")
-
 
     print("\nVector Space Method:")
     vec_top10 = vec_space_method(book, books_df, feature_matrix)
-    vec_reccomendations[user] = vec_top10.index.tolist()
+    space_vector_recommendations[user] = vec_top10.index.tolist()
     
     print("\nKNN Method:")
     knn_top10 = knn_similarity(book, books_df, feature_matrix)
-    knn_reccomendations[user] = knn_top10.tolist()
+    knn_recommendations[user] = knn_top10.tolist()
+    print(f"\n{'-'*40}")
 
-# Both methods produce identical recommendations as they use the same
-# feature matrix and cosine similarity method to calculate reccomendations. 
-# So this part could just be computated once and achieve the same result.
+#Both methods produce identical recommendations as they use the same
+#feature matrix and cosine similarity method to calculate recommendations. 
+#So this part could just be computated once and achieve the same result.
+#However, in some instances you see slight differences in how each algorithm
+#handles a tie break, for example User 3 has a tie between A Russian Journal,
+#and Once there was a war, but Vector space method has A Russian Journal as
+#the 8th most similar and KNN has it at 9.
 
+#Evaluating via. coverage which is the unique number of books recommended
+#divided by the total number of books per user, in this case 4 test users. 
+
+#Using a set to avoid duplicates, so I can have the unique number of books recommended.
+all_recommended_books = set()
+for recommendations in space_vector_recommendations.values():
+    all_recommended_books.update(recommendations)
+coverage = len(all_recommended_books) / total_books
+
+print(f"Coverage of the recommender system: {coverage:.4f}")
+
+#I computed the coverage only once given my previous comment of both vector space method and KNN
+#essentially giving the same output.
+
+#Coverage is 16.67% meaning only 35 out of 210 books were recommended.
+
+
+#Evaluating via. personalisation
+
+#Creating a binary vector for each user 
+#representing which books were recommended to them.
+#1 if book was recommended to that user, 0 if not.
+
+recommendations_vectors = []
+for user in test_set:
+    vector = np.zeros(total_books)
+    for index in space_vector_recommendations[user]:
+        vector[index] = 1
+    recommendations_vectors.append(vector)
+
+#Computing the similarity matrix and the  average, A, 
+#of the upper triangular matrix entries
+
+similarity_matrix = cosine_similarity(recommendations_vectors)
+
+#4 given that it's 4 users, k=1 to exclude the diagonal of 1s which represent the similarity of a user to themselves.
+upper_triangular = similarity_matrix[np.triu_indices(4, k=1)]
+
+#If I used np.triu I'd be returned a 4x4 matrix with everything 
+#below the diagonal set to 0 which would mess up the average
+#as the 0s are included, instead _indices only gives the values of the
+#upper triangular entries.
+
+A = upper_triangular.mean()
+personalisation = 1 - A
+print(f"Personalisation of the recommender system: {personalisation:.4f}")
