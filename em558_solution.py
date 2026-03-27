@@ -141,13 +141,13 @@ categorical = combined_df.select_dtypes(include='str').columns.tolist()
 print("Numerical features:", numerical)
 print("Categorical features:", categorical)
 
-'''
-Identifying where there may be missing entries or null values, in this case all the numerical features,
-in this case all the numerical features have no missing entries so no cleaning will be done, however,
-with the categorical features, Author and Publisher are missing values (below 21100), so the values will be ultimately dropped
-from Author given that it won't remove too much of the data, and missing values in Publisher will be replaced with 'Unknown',
-given that it would remove too much of the data if dropped albeit it's less of an important feature for the recommender engine.
-''' 
+
+#Identifying where there may be missing entries or null values, in this case all the numerical features,
+#in this case all the numerical features have no missing entries so no cleaning will be done, however,
+#with the categorical features, Author and Publisher are missing values (below 21100), so the values will be ultimately dropped
+#from Author given that it won't remove too much of the data, and missing values in Publisher will be replaced with 'Unknown',
+#given that it would remove too much of the data if dropped albeit it's less of an important feature for the recommender engine.
+
 
 
 #Dropping missing values in Author Column
@@ -160,10 +160,10 @@ combined_df['Publisher'] = combined_df['Publisher'].fillna('Unknown')
 print(combined_df.isnull().sum())
 print(combined_df.shape)
 
-'''
-After running describe before cleaning and after cleaning the data the values remain almost the same, 
-even though 2400 entries were dropped so, so far the data still seems reliable to use for the reccomender engine.
-'''
+
+#After running describe before cleaning and after cleaning the data the values remain almost the same, 
+#even though 2400 entries were dropped so, so far the data still seems reliable to use for the reccomender engine.
+
 print(combined_df.describe())
 print(combined_df.describe(include='str'))
 
@@ -174,10 +174,10 @@ print(combined_df.describe(include='str'))
 average_ratings = combined_df.groupby('Title')['rating'].mean().sort_values(ascending=False)
 print(average_ratings.head(10))
 
-'''
-Using Bootstrapping method to compute a 95% confidence interval for the average (mean),
-by creating 1000 samples of size 100 with replacement. 
-'''
+
+#Using Bootstrapping method to compute a 95% confidence interval for the average (mean),
+#by creating 1000 samples of size 100 with replacement. 
+
 bootstrap = []
 for i in range(1000):
     sample = combined_df['rating'].sample(n=100, replace=True)
@@ -196,22 +196,22 @@ average_ratings = average_ratings.to_frame(name='average_rating')
 average_ratings['rating_count'] = combined_df.groupby('Title')['rating'].count()
 print(average_ratings.head(10),"\n")
 
-'''
-All books in this dataset have 100 ratings each so there's no relationship between the average rating
-and the number of ratings, for example you don't see a trend where, 
-a book with a higher average rating doesn't show that the rating count is smaller,
- therefore the average is more extreme. 
-'''
+
+#All books in this dataset have 100 ratings each so there's no relationship between the average rating
+#and the number of ratings, for example you don't see a trend where, 
+#a book with a higher average rating doesn't show that the rating count is smaller,
+#therefore the average is more extreme. 
+
 
 #Part 2, Task 4 a.
 
 #Implementing the user liking or disliking a book based on the thershold being 3.6, 1 represents like and -1 dislike.
 combined_df['rating'] = np.where(combined_df['rating'] >= 3.6, 1, -1)
 
-'''
-Creating a new DF which drops duplicate entries of each novel title, otherwise after making the recommender,
-the most similar novels to a given novel will be the novel itself.
-'''
+
+#Creating a new DF which drops duplicate entries of each novel title, otherwise after making the recommender,
+#the most similar novels to a given novel will be the novel itself.
+
 books_df = combined_df.drop_duplicates(subset='Title').reset_index(drop=True)
 
 #Identifying the features of the DF in separate variable so that each column of a book can be combined into a single string. 
@@ -227,6 +227,11 @@ cosine_sim = cosine_similarity(count_matrix)
 #Getting the location (index) of where the book called Orientalism is in the titleframe
 book_pos = books_df[books_df['Title'] == 'Orientalism'].index[0]
 
+#Grabbing the row from the similarity matrix for the book 'Orientalism'
+#which is an array of scores representing how similar each other book is to it,
+#then converting that row into a pandas series with the corresponding row indexes of other books 
+#so that the similarity scores can all be sorted into the top 10 most similar, in this case to 'Orientalism'.
+
 similarity_scores = pd.Series(cosine_sim[book_pos], index=books_df.index)
 top_10 = similarity_scores.sort_values(ascending=False).iloc[1:11]
 
@@ -234,9 +239,9 @@ print("Top 10 recommendations for 'Orientalism':\n")
 for index, score in top_10.items():
     print(f"{books_df.loc[index, 'Title']} - Similarity Score: {score:.4f}")
 print("\n")
-'''
-Above, 
-'''
+
+
+
 
 #Part 3 (Open-ended): Building up and to evaluate a recommender engine
 
@@ -245,11 +250,11 @@ categorical_features = ['Author', 'Genre', 'SubGenre', 'Publisher']
 
 dummies = pd.get_dummies(books_df[categorical_features])
 
-'''
-Normalising height feature to be between 0 and 1 to match the rest of the features already converted into binary form, 
-before it was 160mm to 283mm, if it were to stay that way height would have a lot more influence on the similarity score
-than the other features making this unfair. It's also unlikely you'd be reccomended a book given its height.
-'''
+
+#Normalising height feature to be between 0 and 1 to match the rest of the features already converted into binary form, 
+#before it was 160mm to 283mm, if it were to stay that way height would have a lot more influence on the similarity score
+#than the other features making this unfair. It's also unlikely you'd be reccomended a book given its height.
+
 height_norm = (books_df['Height'] - books_df['Height'].min()) / (books_df['Height'].max() - books_df['Height'].min())
 
 feature_matrix = pd.concat([dummies, height_norm], axis=1).astype(float).values
@@ -261,8 +266,9 @@ def vec_space_method(book_title, books_df, feature_matrix):
     book_index = books_df[books_df['Title'] == book_title].index[0]
     book_vector = feature_matrix[book_index, :]    
 
-    scores = feature_matrix @ book_vector
+#Manually computing, cosine_similarity(A, B) = dot(A, B) / (||A|| * ||B||)
 
+    scores = feature_matrix @ book_vector
     norms = LA.norm(feature_matrix, axis=1) * LA.norm(book_vector)
     similarities = scores / norms
 
@@ -277,9 +283,6 @@ def vec_space_method(book_title, books_df, feature_matrix):
 
 vec_space_method('Orientalism', books_df, feature_matrix)
 
-'''
-
-'''
 
 #Task 2 K nearest neighbour (KNN) method for similarity
 
@@ -299,3 +302,41 @@ def knn_similarity(book_title, books_df, feature_matrix):
     return indices[0][1:11]
 
 knn_similarity('Orientalism', books_df, feature_matrix)
+
+
+#Given the results and the code above, both methods use cosine similarity to 
+#calculate the similarity between each book using the same feature matrix,
+#therefore they produce the same recommendation scores.
+
+
+#Task 3, Evaluating both recommender systems
+
+test_set = {
+    'User 1': 'Fundamentals of Wavelets',
+    'User 2': 'Orientalism',
+    'User 3': 'How to Think Like Sherlock Holmes',
+    'User 4': 'Data Scientists at Work'
+}
+
+total_books = len(books_df)
+
+vec_reccomendations = {}
+knn_reccomendations = {}
+
+for user, book in test_set.items():
+
+    print(f"{user} likes '{book}'")
+
+
+    print("\nVector Space Method:")
+    vec_top10 = vec_space_method(book, books_df, feature_matrix)
+    vec_reccomendations[user] = vec_top10.index.tolist()
+    
+    print("\nKNN Method:")
+    knn_top10 = knn_similarity(book, books_df, feature_matrix)
+    knn_reccomendations[user] = knn_top10.tolist()
+
+# Both methods produce identical recommendations as they use the same
+# feature matrix and cosine similarity method to calculate reccomendations. 
+# So this part could just be computated once and achieve the same result.
+
